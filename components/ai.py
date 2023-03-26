@@ -10,6 +10,7 @@ from actions import Action, BumpAction, MeleeAction, MovementAction, WaitAction
 if TYPE_CHECKING:
     from entity import Actor
 
+
 # это называется множественное наследование
 class BaseAI(Action):
 
@@ -46,6 +47,7 @@ class BaseAI(Action):
 
         # Convert from List[List[int]] to List[Tuple[int, int]].
         return [(index[0], index[1]) for index in path]
+
 
 class ConfusedEnemy(BaseAI):
     """
@@ -90,6 +92,8 @@ class ConfusedEnemy(BaseAI):
             # The actor will either try to move or attack in the chosen random direction.
             # Its possible the actor will just bump into the wall, wasting a turn.
             return BumpAction(self.entity, direction_x, direction_y,).perform()
+
+
 class HostileEnemy(BaseAI):
     """обработка враждебных сущностей. используем для врагов"""
     def __init__(self, entity: Actor):
@@ -100,7 +104,7 @@ class HostileEnemy(BaseAI):
         target = self.engine.player
         dx = target.x - self.entity.x
         dy = target.y - self.entity.y
-        distance = max(abs(dx), abs(dy))  # Расстояние Чебышева
+        distance = max(abs(dx), abs(dy))  # Расстояние Чебышева - метрика на векторном пространстве
 
         if self.engine.game_map.visible[self.entity.x, self.entity.y]:
             if distance <= 1:

@@ -26,19 +26,20 @@ class Equippable(BaseComponent):
 
 class Dagger(Equippable):
     def __init__(self) -> None:
-        super().__init__(equipment_type=EquipmentType.WEAPON, power_bonus=2)
+        super().__init__(equipment_type=EquipmentType.WEAPON, power_bonus=5)
 
 
 class Sword(Equippable):
     def __init__(self) -> None:
-        super().__init__(equipment_type=EquipmentType.WEAPON, power_bonus=4)
+        super().__init__(equipment_type=EquipmentType.WEAPON, power_bonus=5)
 
 
 class LeatherArmor(Equippable):
     def __init__(self) -> None:
-        super().__init__(equipment_type=EquipmentType.ARMOR, defense_bonus=1)
+        super().__init__(equipment_type=EquipmentType.ARMOR, defense_bonus=3)
 
 
 class ChainMail(Equippable):
+    """кольчуга"""
     def __init__(self) -> None:
-        super().__init__(equipment_type=EquipmentType.ARMOR, defense_bonus=3)
+        super().__init__(equipment_type=EquipmentType.ARMOR, defense_bonus=4)

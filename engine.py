@@ -18,8 +18,10 @@ class Engine:
 # entitles - набор сущностей, которые будут генериться
 # event_handler -  handle our events
 # player - удобно передать отдельно, потому что мы с ним будем много взаимодействовать
+# определяют два атрибута класса - переменная, определенная на уровне класса, а не на уровне экземпляра
     game_map: GameMap
     game_world: GameWorld
+
     def __init__(self, player: Actor):
         self.message_log = MessageLog()
         self.mouse_location = (0, 0)
@@ -39,7 +41,7 @@ class Engine:
             # массив для просчитывания поля зрения
             self.game_map.tiles["transparent"],
             (self.player.x, self.player.y),
-            radius=7,
+            radius=8,
         )
         # если плиточка видимая, то ее стоит добавить в открытые
         # эта строчка добавляет только что открытые плитки в массив уже увиденных
@@ -51,7 +53,13 @@ class Engine:
         """рисует весь экран со всеми включениями (хп, сообщения, пещеры)"""
         self.game_map.render(console)
 
-        self.message_log.render(console=console, x=22, y=42, width=60, height=8)
+        self.message_log.render(
+            console=console,
+            x=22,
+            y=42,
+            width=60,
+            height=8
+        )
 
         render_functions.render_bar(
             console=console,
