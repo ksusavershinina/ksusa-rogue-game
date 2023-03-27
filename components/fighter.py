@@ -78,6 +78,8 @@ class Fighter(BaseComponent):
 
         self.engine.player.money.add_cash(self.parent.money.money_given)
 
+        self.engine.player.level.add_xp(self.parent.level.xp_given)
+
     def heal(self, amount: int) -> int:
         """считает здоровье после воостановления - хилка"""
         if self.hp == self.max_hp:

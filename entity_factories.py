@@ -7,6 +7,7 @@ from components.equipment import Equipment
 from components.inventory import Inventory
 from components.cash import Cash
 from entity import Actor, Item
+from components.level import Level
 
 player = Actor(
     char="@",
@@ -17,7 +18,7 @@ player = Actor(
     fighter=Fighter(hp=300, base_defense=1, base_power=50),
     inventory=Inventory(capacity=26), # каждая буква алфавита соответствует слоту, так что их 26
     money=Cash(current_cash=0),
-
+    level=Level(level_up_base=200),
 )
 
 orc = Actor(
@@ -29,6 +30,7 @@ orc = Actor(
     fighter=Fighter(hp=10, base_defense=0, base_power=3),
     inventory=Inventory(capacity=0),
     money=Cash(money_given=10),
+    level=Level(xp_given=35),
 )
 troll = Actor(
     char="T",
@@ -39,6 +41,7 @@ troll = Actor(
     fighter=Fighter(hp=16, base_defense=1, base_power=4),
     inventory=Inventory(capacity=0),
     money=Cash(money_given=20),
+    level=Level(xp_given=100),
 )
 confusion_scroll = Item(
     char="~",
