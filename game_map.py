@@ -48,6 +48,7 @@ class GameMap:
     @property
     def items(self) -> Iterator[Item]:
         yield from (entity for entity in self.entities if isinstance(entity, Item))
+
     def get_blocking_entity_at_location(
             self, location_x: int, location_y: int,
     ) -> Optional[Entity]:
@@ -116,7 +117,7 @@ class GameWorld:
         max_rooms: int,
         room_min_size: int,
         room_max_size: int,
-        current_floor: int = 0
+        current_floor: int = 0,
     ):
         self.engine = engine
 

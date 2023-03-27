@@ -10,18 +10,25 @@ from render_order import RenderOrder
 if TYPE_CHECKING:
     from entity import Actor
 
+
 class Fighter(BaseComponent):
     parent: Actor
-    def __init__(self, hp: int, base_defense: int, base_power: int):
+
+    def __init__(self, hp: int, base_defense: int, base_power: int, money: int = 0):
 
         self.max_hp = hp
         self._hp = hp
         self.base_defense = base_defense
         self.base_power = base_power
+        self.money = money
+
     # геттер для hp
     @property
     def hp(self) -> int:
         return self._hp
+
+
+
     # для установки значения свойств класса
     @hp.setter
     def hp(self, value: int) -> None:
@@ -51,6 +58,7 @@ class Fighter(BaseComponent):
             return self.parent.equipment.power_bonus
         else:
             return 0
+
     def die(self) -> None:
         if self.engine.player is self.parent:
             death_message = "You died!"
@@ -67,6 +75,8 @@ class Fighter(BaseComponent):
         self.parent.render_order = RenderOrder.CORPSE
 
         self.engine.message_log.add_message(death_message, death_message_color)
+
+        self.engine.player.money.add_cash(self.parent.money.money_given)
 
         self.engine.player.level.add_xp(self.parent.level.xp_given)
 
@@ -89,3 +99,19 @@ class Fighter(BaseComponent):
     def take_damage(self, amount: int) -> None:
         """считает здоровье после урона"""
         self.hp -= amount
+
+    def take_money(self, amount: int) -> int:
+
+        new_count = self.money + amount
+
+        if new_count > self.money:
+            new_count = self.money
+
+        amount_got = new_count - self.money
+
+        self.money = new_count
+
+        return amount_got
+
+    def purchase(self, amount: int) -> None:
+        self.money -= amount

@@ -5,14 +5,18 @@ import color
 import exceptions
 
 if TYPE_CHECKING:
-   from engine import Engine
-   from entity import Actor, Entity, Item
+    from engine import Engine
+    from entity import Actor, Entity, Item
 
 
 #
 class Action:
-    """показывает типы действий, который может выполнять наш рогалик"""
+    """Показывает типы действий, который может выполнять наш рогалик"""
+
     def __init__(self, entity: Actor) -> None:
+    # Он обычно используется в Python для обеспечения правильной инициализации
+    # родительского класса перед дочерним классом.
+    # В Python все классы неявно наследуются от базового класса object, поэтому Action тоже наследуется от него.
         super().__init__()
         self.entity = entity
 
@@ -20,6 +24,7 @@ class Action:
     def engine(self) -> Engine:
         """Return the engine this action belongs to."""
         return self.entity.gamemap.engine
+
     def perform(self) -> None:
         """если коротко: в каждом классе своя реализация. класс определяется с помощью dispatch
         Perform this action with the objects needed to determine its scope.
@@ -28,6 +33,8 @@ class Action:
         This method must be overridden by Action subclasses."""
 
         raise NotImplementedError()
+
+
 class PickupAction(Action):
     """Pickup an item and add it to the inventory, if there is room for it."""
 
@@ -53,10 +60,12 @@ class PickupAction(Action):
 
         raise exceptions.Impossible("There is nothing here to pick up.")
 
+
 class ItemAction(Action):
     """действия неживых объектов"""
+
     def __init__(
-        self, entity: Actor, item: Item, target_xy: Optional[Tuple[int, int]] = None
+            self, entity: Actor, item: Item, target_xy: Optional[Tuple[int, int]] = None
     ):
         super().__init__(entity)
         self.item = item
@@ -75,12 +84,15 @@ class ItemAction(Action):
         if self.item.consumable:
             self.item.consumable.activate(self)
 
+
 class DropItem(ItemAction):
     def perform(self) -> None:
         if self.entity.equipment.item_is_equipped(self.item):
             self.entity.equipment.toggle_equip(self.item)
 
         self.entity.inventory.drop(self.item)
+
+
 class EquipAction(Action):
     def __init__(self, entity: Actor, item: Item):
         super().__init__(entity)
@@ -89,9 +101,12 @@ class EquipAction(Action):
 
     def perform(self) -> None:
         self.entity.equipment.toggle_equip(self.item)
+
+
 class WaitAction(Action):
     """просто ждущий код для того, чтобы гг и враг
     переглядывались, но ничего не делали"""
+
     def perform(self) -> None:
         pass
 
@@ -112,6 +127,7 @@ class TakeStairsAction(Action):
 
 class ActionWithDirection(Action):
     """действие с направлением"""
+
     def __init__(self, entity: Actor, dx: int, dy: int):
         super().__init__(entity)
 
@@ -136,8 +152,11 @@ class ActionWithDirection(Action):
 
     def perform(self) -> None:
         raise NotImplementedError()
+
+
 class MeleeAction(ActionWithDirection):
     """ближний бой"""
+
     def perform(self) -> None:
         target = self.target_actor
         if not target:
@@ -163,8 +182,10 @@ class MeleeAction(ActionWithDirection):
 
         print(f"You kick the {target.name}, much to its annoyance!")
 
+
 class MovementAction(ActionWithDirection):
     """Описывает движение или атаку игрока"""
+
     def perform(self) -> None:
         """проверка на то, в граница ли идем и можно ли пройти вообще
         а также на то, нет ли сущностей, преграждающих путь"""
@@ -180,9 +201,11 @@ class MovementAction(ActionWithDirection):
             raise exceptions.Impossible("That way is blocked.")
         self.entity.move(self.dx, self.dy)
 
+
 class BumpAction(ActionWithDirection):
     """принимает решение о том, движется ли наш игрок или атакует.
     по сути производит выбор между классом движения и классом атаки."""
+
     def perform(self) -> None:
         if self.target_actor:
             return MeleeAction(self.entity, self.dx, self.dy).perform()

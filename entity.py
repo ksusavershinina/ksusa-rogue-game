@@ -16,8 +16,9 @@ if TYPE_CHECKING:
     from components.equipment import Equipment
     from components.inventory import Inventory
     from game_map import GameMap
+    from components.cash import Cash
     from components.level import Level
-
+# переменная, которая может быть подклассом Entity или им самим
 T = TypeVar("T", bound="Entity")
 # создание кортежа - типа массив, в котором могу быть данные любых типов
 # отличие от листа - не может менять длину (можно через промежуточный)
@@ -84,10 +85,11 @@ class Entity:
         # Move the entity by a given amount
         self.x += dx
         self.y += dy
-# создаем для того, чтобы отделить сущностей, которые умеют двигаться,
-# от обычных сущностей
+
+
 class Actor(Entity):
-    """класс для обьектов, которые умеют двигаться"""
+    """класс для обьектов, которые умеют двигаться. создаем для того, чтобы
+    отделить сущностей, которые умеют двигаться, от обычных сущностей"""
     def __init__(
         self,
         *,
@@ -100,7 +102,8 @@ class Actor(Entity):
         equipment: Equipment,
         fighter: Fighter,
         inventory: Inventory,
-            level: Level,
+        money: Cash,
+        level: Level,
     ):
         super().__init__(
             x=x,
@@ -123,13 +126,18 @@ class Actor(Entity):
         self.inventory = inventory
         self.inventory.parent = self
 
+        self.money = money
+        self.money.parent = self
+
         self.level = level
         self.level.parent = self
+
 
     @property
     def is_alive(self) -> bool:
         """Returns True as long as this actor can perform actions."""
         return bool(self.ai)
+
 
 class Item(Entity):
     """класс для неживых сущностей - для вещей по сути"""

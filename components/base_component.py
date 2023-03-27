@@ -9,6 +9,8 @@ if TYPE_CHECKING:
 
 
 class BaseComponent:
+    """BaseComponent is a base class in the game that defines the common properties
+    and behaviors for various components in the game, such as Fighter, Inventory, Level, and Equipment"""
     parent: Entity  # Экземпляр сущности-владельца.
     # property - позволяет объявить атрибут(поле) в классе как атрибут-свойство
     # то есть к нему можно обращаться и как к полю, и как к атрибуту

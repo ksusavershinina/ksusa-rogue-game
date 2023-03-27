@@ -74,7 +74,11 @@ class BaseEventHandler(tcod.event.EventDispatch[ActionOrHandler]):
         state = self.dispatch(event)
         if isinstance(state, BaseEventHandler):
             return state
+        # есди не является действием
         assert not isinstance(state, Action), f"{self!r} can not handle actions."
+        # If the new state is neither an instance of BaseEventHandler nor
+        # Action, it means that the current event handler should continue
+        # handling events, so the handle_events() method returns itself (self).
         return self
 
     def on_render(self, console: tcod.Console) -> None:
@@ -110,6 +114,7 @@ class PopupMessage(BaseEventHandler):
         """Any key returns to the parent handler."""
         return self.parent
 
+
 class EventHandler(BaseEventHandler):
     # через -> написано, что возвращает. если optional,то может вернуть None
     """наследник EventDispatch - класс, который отправляет события в методы,
@@ -131,10 +136,11 @@ class EventHandler(BaseEventHandler):
                 return LevelUpEventHandler(self.engine)
             return MainGameEventHandler(self.engine)  # Return to the main handler.
         return self
-    def handle_action(self, action: Optional[Action]) -> bool:
-        """Handle actions returned from event methods.
 
-        Returns True if the action will advance a turn.
+    def handle_action(self, action: Optional[Action]) -> bool:
+        """Обработка действий, возвращаемых методами событий.
+
+          Возвращает True, если действие продвинет ход.
         """
         if action is None:
             return False
@@ -158,6 +164,121 @@ class EventHandler(BaseEventHandler):
 
     def on_render(self, console: tcod.Console) -> None:
         self.engine.render(console)
+
+
+class MainGameEventHandler(EventHandler):
+    def ev_keydown(self, event: tcod.event.KeyDown) -> Optional[ActionOrHandler]:
+        """получает нажатия клавиш и определяет, какай наследник Action
+        вернуть или None, если никакого подходящего нажатия клавиши не было"""
+        # как раз таки эта переменная храник в себе возвращаемого наследника
+        action: Optional[Action] = None
+        # содержит в себе нажатый символ
+        key = event.sym
+        modifier = event.mod
+
+        player = self.engine.player
+
+        if key == tcod.event.K_PERIOD and modifier & (
+                tcod.event.KMOD_LSHIFT | tcod.event.KMOD_RSHIFT
+        ):
+            return actions.TakeStairsAction(player)
+
+        if key in MOVE_KEYS:
+            dx, dy = MOVE_KEYS[key]
+            action = BumpAction(player, dx, dy)
+        elif key in WAIT_KEYS:
+            action = WaitAction(player)
+
+        elif key == tcod.event.K_ESCAPE:
+            raise SystemExit()
+        elif key == tcod.event.K_v:
+            return HistoryViewer(self.engine)
+        elif key == tcod.event.K_g:
+            action = PickupAction(player)
+        elif key == tcod.event.K_i:
+            return InventoryActivateHandler(self.engine)
+        elif key == tcod.event.K_d:
+            return InventoryDropHandler(self.engine)
+        elif key == tcod.event.K_c:
+            return CharacterScreenEventHandler(self.engine)
+        elif key == tcod.event.K_SLASH:
+            return LookHandler(self.engine)
+
+        # No valid key was pressed
+        # Независимо от того, назначено ли действие подклассу Action или None, мы возвращаем его.
+        return action
+
+
+class GameOverEventHandler(EventHandler):
+    """имеет дело с тем, когда гг встречает смерть
+       не обновляется fov
+       ничего не работает, кроме кнопки выхода"""
+
+    def on_quit(self) -> None:
+        """Handle exiting out of a finished game."""
+        if os.path.exists("savegame.sav"):
+            os.remove("savegame.sav")  # Deletes the active save file.
+        raise exceptions.QuitWithoutSaving()  # Avoid saving a finished game.
+
+    def ev_quit(self, event: tcod.event.Quit) -> None:
+        self.on_quit()
+
+    def ev_keydown(self, event: tcod.event.KeyDown) -> None:
+        if event.sym == tcod.event.K_ESCAPE:
+            self.on_quit()
+
+
+class HistoryViewer(EventHandler):
+    """Print the history on a larger window which can be navigated."""
+
+    def __init__(self, engine: Engine):
+        super().__init__(engine)
+        self.log_length = len(engine.message_log.messages)
+        self.cursor = self.log_length - 1
+
+    def on_render(self, console: tcod.Console) -> None:
+        super().on_render(console)  # Draw the main state as the background.
+
+        log_console = tcod.Console(console.width - 6, console.height - 6)
+
+        # Draw a frame with a custom banner title.
+        log_console.draw_frame(0, 0, log_console.width, log_console.height)
+        log_console.print_box(
+            0, 0, log_console.width, 1, "┤Message history├", alignment=tcod.CENTER
+        )
+
+        # Render the message log using the cursor parameter.
+        self.engine.message_log.render_messages(
+            log_console,
+            1,
+            1,
+            log_console.width - 2,
+            log_console.height - 2,
+            self.engine.message_log.messages[: self.cursor + 1],
+        )
+        log_console.blit(console, 3, 3)
+
+    def ev_keydown(self, event: tcod.event.KeyDown) -> Optional[MainGameEventHandler]:
+        # Fancy conditional movement to make it feel right.
+        if event.sym in CURSOR_Y_KEYS:
+            adjust = CURSOR_Y_KEYS[event.sym]
+            if adjust < 0 and self.cursor == 0:
+                # Only move from the top to the bottom when you're on the edge.
+                self.cursor = self.log_length - 1
+            elif adjust > 0 and self.cursor == self.log_length - 1:
+                # Same with bottom to top movement.
+                self.cursor = 0
+            else:
+                # Otherwise move while staying clamped to the bounds of the history log.
+                self.cursor = max(0, min(self.cursor + adjust, self.log_length - 1))
+        elif event.sym == tcod.event.K_HOME:
+            self.cursor = 0  # Move directly to the top message.
+        elif event.sym == tcod.event.K_END:
+            self.cursor = self.log_length - 1  # Move directly to the last message.
+        else:  # Any other key moves back to the main game state.
+            return MainGameEventHandler(self.engine)
+        return None
+
 
 class AskUserEventHandler(EventHandler):
     """Handles user input for actions which require special input."""
@@ -189,6 +310,49 @@ class AskUserEventHandler(EventHandler):
         return MainGameEventHandler(self.engine)
 
 
+class CharacterScreenEventHandler(AskUserEventHandler):
+    TITLE = "Character Information"
+
+    def on_render(self, console: tcod.Console) -> None:
+        super().on_render(console)
+
+        if self.engine.player.x <= 30:
+            x = 40
+        else:
+            x = 0
+
+        y = 0
+
+        width = len(self.TITLE) + 4
+
+        console.draw_frame(
+            x=x,
+            y=y,
+            width=width,
+            height=7,
+            title=self.TITLE,
+            clear=True,
+            fg=(255, 255, 255),
+            bg=(0, 0, 0),
+        )
+        console.print(
+            x=x + 1, y=y + 1, string=f"Level: {self.engine.player.level.current_level}"
+        )
+        console.print(
+            x=x + 1,
+            y=y + 2,
+            string=f"XP for next Level: {self.engine.player.level.experience_to_next_level}",
+        )
+        console.print(
+            x=x + 1, y=y + 3, string=f"Money: {self.engine.player.money.current_cash}"
+        )
+        console.print(
+            x=x + 1, y=y + 4, string=f"Attack: {self.engine.player.fighter.power}"
+        )
+        console.print(
+            x=x + 1, y=y + 5, string=f"Defense: {self.engine.player.fighter.defense}"
+        )
+
 
 class LevelUpEventHandler(AskUserEventHandler):
     TITLE = "Level Up"
@@ -204,7 +368,7 @@ class LevelUpEventHandler(AskUserEventHandler):
         console.draw_frame(
             x=x,
             y=0,
-            width=37,
+            width=35,
             height=8,
             title=self.TITLE,
             clear=True,
@@ -332,29 +496,6 @@ class InventoryEventHandler(AskUserEventHandler):
         """Called when the user selects a valid item."""
         raise NotImplementedError()
 
-class InventoryActivateHandler(InventoryEventHandler):
-    """Handle using an inventory item."""
-
-    TITLE = "Select an item to use"
-
-    def on_item_selected(self, item: Item) -> Optional[ActionOrHandler]:
-        """Return the action for the selected item."""
-        if item.consumable:
-            # Return the action for the selected item.
-            return item.consumable.get_action(self.engine.player)
-        elif item.equippable:
-            return actions.EquipAction(self.engine.player, item)
-        else:
-            return None
-
-class InventoryDropHandler(InventoryEventHandler):
-    """Handle dropping an inventory item."""
-
-    TITLE = "Select an item to drop"
-
-    def on_item_selected(self, item: Item) -> Optional[Action]:
-        """Drop this item."""
-        return actions.DropItem(self.engine.player, item)
 
 class SelectIndexHandler(AskUserEventHandler):
     """Обрабатывает запрос пользователя на индекс на карте."""
@@ -413,12 +554,40 @@ class SelectIndexHandler(AskUserEventHandler):
         """Вызывается при выборе индекса."""
         raise NotImplementedError()
 
+
+class InventoryActivateHandler(InventoryEventHandler):
+    """Handle using an inventory item."""
+
+    TITLE = "Select an item to use"
+
+    def on_item_selected(self, item: Item) -> Optional[ActionOrHandler]:
+        """Return the action for the selected item."""
+        if item.consumable:
+            # Return the action for the selected item.
+            return item.consumable.get_action(self.engine.player)
+        elif item.equippable:
+            return actions.EquipAction(self.engine.player, item)
+        else:
+            return None
+
+
+class InventoryDropHandler(InventoryEventHandler):
+    """Handle dropping an inventory item."""
+
+    TITLE = "Select an item to drop"
+
+    def on_item_selected(self, item: Item) -> Optional[Action]:
+        """Drop this item."""
+        return actions.DropItem(self.engine.player, item)
+
+
 class LookHandler(SelectIndexHandler):
     """Lets the player look around using the keyboard."""
 
     def on_index_selected(self, x: int, y: int) -> MainGameEventHandler:
         """Return to main handler."""
         return MainGameEventHandler(self.engine)
+
 
 class SingleRangedAttackHandler(SelectIndexHandler):
     """Handles targeting a single enemy. Only the enemy selected will be affected."""
@@ -432,6 +601,8 @@ class SingleRangedAttackHandler(SelectIndexHandler):
 
     def on_index_selected(self, x: int, y: int) -> Optional[Action]:
         return self.callback((x, y))
+
+
 class AreaRangedAttackHandler(SelectIndexHandler):
     """Handles targeting an area within a given radius.
 
@@ -466,65 +637,6 @@ class AreaRangedAttackHandler(SelectIndexHandler):
 
     def on_index_selected(self, x: int, y: int) -> Optional[Action]:
         return self.callback((x, y))
-class MainGameEventHandler(EventHandler):
-    def ev_keydown(self, event: tcod.event.KeyDown) -> Optional[ActionOrHandler]:
-        """получает нажатия клавиш и определяет, какай наследник Action
-        вернуть или None, если никакого подходящего нажатия клавиши не было"""
-        # как раз таки эта переменная храник в себе возвращаемого наследника
-        action: Optional[Action] = None
-        # содержит в себе нажатый символ
-        key = event.sym
-        modifier = event.mod
-
-        player = self.engine.player
-
-        if key == tcod.event.K_PERIOD and modifier & (
-                tcod.event.KMOD_LSHIFT | tcod.event.KMOD_RSHIFT
-        ):
-            return actions.TakeStairsAction(player)
-
-        if key in MOVE_KEYS:
-            dx, dy = MOVE_KEYS[key]
-            action = BumpAction(player, dx, dy)
-        elif key in WAIT_KEYS:
-            action = WaitAction(player)
-
-        elif key == tcod.event.K_ESCAPE:
-            raise SystemExit()
-        elif key == tcod.event.K_v:
-            return HistoryViewer(self.engine)
-        elif key == tcod.event.K_g:
-            action = PickupAction(player)
-        elif key == tcod.event.K_i:
-            return InventoryActivateHandler(self.engine)
-        elif key == tcod.event.K_d:
-            return InventoryDropHandler(self.engine)
-        elif key == tcod.event.K_c:
-            return CharacterScreenEventHandler(self.engine)
-        elif key == tcod.event.K_SLASH:
-            return LookHandler(self.engine)
-
-        # No valid key was pressed
-        # Независимо от того, назначено ли действие подклассу Action или None, мы возвращаем его.
-        return action
-
-class GameOverEventHandler(EventHandler):
-    """имеет дело с тем, когда гг встречает смерть
-       не обновляется fov
-       ничего не работает, кроме кнопки выхода"""
-
-    def on_quit(self) -> None:
-        """Handle exiting out of a finished game."""
-        if os.path.exists("savegame.sav"):
-            os.remove("savegame.sav")  # Deletes the active save file.
-        raise exceptions.QuitWithoutSaving()  # Avoid saving a finished game.
-
-    def ev_quit(self, event: tcod.event.Quit) -> None:
-        self.on_quit()
-
-    def ev_keydown(self, event: tcod.event.KeyDown) -> None:
-        if event.sym == tcod.event.K_ESCAPE:
-            self.on_quit()
 
 
 CURSOR_Y_KEYS = {
@@ -534,98 +646,3 @@ CURSOR_Y_KEYS = {
     tcod.event.K_PAGEDOWN: 10,
 }
 
-class HistoryViewer(EventHandler):
-    """Print the history on a larger window which can be navigated."""
-
-    def __init__(self, engine: Engine):
-        super().__init__(engine)
-        self.log_length = len(engine.message_log.messages)
-        self.cursor = self.log_length - 1
-
-    def on_render(self, console: tcod.Console) -> None:
-        super().on_render(console)  # Draw the main state as the background.
-
-        log_console = tcod.Console(console.width - 6, console.height - 6)
-
-        # Draw a frame with a custom banner title.
-        log_console.draw_frame(0, 0, log_console.width, log_console.height)
-        log_console.print_box(
-            0, 0, log_console.width, 1, "┤Message history├", alignment=tcod.CENTER
-        )
-
-        # Render the message log using the cursor parameter.
-        self.engine.message_log.render_messages(
-            log_console,
-            1,
-            1,
-            log_console.width - 2,
-            log_console.height - 2,
-            self.engine.message_log.messages[: self.cursor + 1],
-        )
-        log_console.blit(console, 3, 3)
-
-    def ev_keydown(self, event: tcod.event.KeyDown) -> Optional[MainGameEventHandler]:
-        # Fancy conditional movement to make it feel right.
-        if event.sym in CURSOR_Y_KEYS:
-            adjust = CURSOR_Y_KEYS[event.sym]
-            if adjust < 0 and self.cursor == 0:
-                # Only move from the top to the bottom when you're on the edge.
-                self.cursor = self.log_length - 1
-            elif adjust > 0 and self.cursor == self.log_length - 1:
-                # Same with bottom to top movement.
-                self.cursor = 0
-            else:
-                # Otherwise move while staying clamped to the bounds of the history log.
-                self.cursor = max(0, min(self.cursor + adjust, self.log_length - 1))
-        elif event.sym == tcod.event.K_HOME:
-            self.cursor = 0  # Move directly to the top message.
-        elif event.sym == tcod.event.K_END:
-            self.cursor = self.log_length - 1  # Move directly to the last message.
-        else:  # Any other key moves back to the main game state.
-            return MainGameEventHandler(self.engine)
-        return None
-
-class CharacterScreenEventHandler(AskUserEventHandler):
-    TITLE = "Character Information"
-
-    def on_render(self, console: tcod.Console) -> None:
-        super().on_render(console)
-
-        if self.engine.player.x <= 30:
-            x = 40
-        else:
-            x = 0
-
-        y = 0
-
-        width = len(self.TITLE) + 4
-
-        console.draw_frame(
-            x=x,
-            y=y,
-            width=width,
-            height=7,
-            title=self.TITLE,
-            clear=True,
-            fg=(255, 255, 255),
-            bg=(0, 0, 0),
-        )
-
-        console.print(
-            x=x + 1, y=y + 1, string=f"Level: {self.engine.player.level.current_level}"
-        )
-        console.print(
-            x=x + 1, y=y + 2, string=f"XP: {self.engine.player.level.current_xp}"
-        )
-        console.print(
-            x=x + 1,
-            y=y + 3,
-            string=f"XP for next Level: {self.engine.player.level.experience_to_next_level}",
-        )
-
-        console.print(
-            x=x + 1, y=y + 4, string=f"Attack: {self.engine.player.fighter.power}"
-        )
-        console.print(
-            x=x + 1, y=y + 5, string=f"Defense: {self.engine.player.fighter.defense}"
-        )

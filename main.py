@@ -22,12 +22,15 @@ def main() -> None:
     tileset = tcod.tileset.load_tilesheet(
         "dejavu10x10_gs_tc.png", 32, 8, tcod.tileset.CHARMAP_TCOD # для подгружения символов по правилам tcod, а не стандратным
     )
-
+    # это обработчик событий.
     # используется аннотация типов
     # input_handlers.BaseEventHandler - это аннотация типа, которая указывает, что переменная
     # handler должна быть экземпляром класса BaseEventHandler из модуля input_handlers.
+    # BaseEventHandler - класс абстрактный, поэтому надо явно указать, какого наследника берем
     handler: input_handlers.BaseEventHandler = setup_game.MainMenu()
 
+    # with гарантирует то, что по завершении все занятые ресурсы будут освобождены
+    # также с его помощью можно передавать дополнительные настройки
     with tcod.context.new_terminal(
         screen_width,
         screen_height,
@@ -42,12 +45,21 @@ def main() -> None:
         try:
             while True:
                 root_console.clear()
+                # сначала рендерим
                 handler.on_render(console=root_console)
+                # потом печатаем
                 context.present(root_console)
 
                 try:
+                    # tcod.event.wait() ждет следующего события ввода игрока
                     for event in tcod.event.wait():
+                        # преобразует событие в формат, используемый библиотекой tcod
                         context.convert_event(event)
+                        # отвечает за обработку события и возврат следующего обработчика события для использования
+                        # запись именно такая, чтобы можно было менять handler в зависимости от того, что это за событие
+                        # Если новый обработчик событий возвращает экземпляр Action, цикл завершится и действие будет
+                        # выполнено. Если новый обработчик событий не является экземпляром BaseEventHandler, цикл будет
+                        # продолжать выполняться и ожидать событий ввода игрока.
                         handler = handler.handle_events(event)
                 except Exception:  # Handle exceptions in game.
                     traceback.print_exc()  # Print error to stderr.

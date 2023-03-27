@@ -13,19 +13,19 @@ import tcod
 
 max_items_by_floor = [
     (1, 1),
-    (4, 2),
+    (3, 2),
 ]
 
 max_monsters_by_floor = [
     (1, 2),
-    (4, 3),
-    (6, 5),
+    (3, 3),
+    (5, 5),
 ]
 item_chances: Dict[int, List[Tuple[Entity, int]]] = {
-    0: [(entity_factories.health_potion, 35)],
-    2: [(entity_factories.confusion_scroll, 10)],
-    4: [(entity_factories.lightning_scroll, 25), (entity_factories.sword, 5)],
-    6: [(entity_factories.fireball_scroll, 25), (entity_factories.chain_mail, 15)],
+    0: [(entity_factories.health_potion, 35), (entity_factories.coin, 100)],
+    1: [(entity_factories.confusion_scroll, 10)],
+    3: [(entity_factories.lightning_scroll, 25), (entity_factories.sword, 5)],
+    5: [(entity_factories.fireball_scroll, 25), (entity_factories.chain_mail, 15)],
 }
 
 enemy_chances: Dict[int, List[Tuple[Entity, int]]] = {
@@ -37,8 +37,9 @@ enemy_chances: Dict[int, List[Tuple[Entity, int]]] = {
 
 
 def get_max_value_for_floor(
+    max_value_by_floor: List[Tuple[int, int]], floor: int
+) -> int:
 
-    max_value_by_floor: List[Tuple[int, int]], floor: int) -> int:
     current_value = 0
 
     for floor_minimum, value in max_value_by_floor:
@@ -49,10 +50,11 @@ def get_max_value_for_floor(
 
     return current_value
 
+
 def get_entities_at_random(
-    weighted_chances_by_floor: Dict[int, List[Tuple[Entity, int]]],
-    number_of_entities: int,
-    floor: int,
+        weighted_chances_by_floor: Dict[int, List[Tuple[Entity, int]]],
+        number_of_entities: int,
+        floor: int,
 ) -> List[Entity]:
     """goes through they keys (floor numbers) and values (list of weighted entities),
     stopping when the key is higher than the given floor number."""
@@ -76,9 +78,12 @@ def get_entities_at_random(
     )
 
     return chosen_entities
+
+
 # нужен для создания комнат
 class RectangularRoom:
     """создание прямоугольной комнаты"""
+
     def __init__(self, x: int, y: int, width: int, height: int):
         self.x1 = x
         self.y1 = y
@@ -99,6 +104,7 @@ class RectangularRoom:
         # +1 надо для того, чтобы были двойные стенки.
         # Поможет избежать случайного отсуствият стены между комнатами рядом
         return slice(self.x1 + 1, self.x2), slice(self.y1 + 1, self.y2)
+
     # проверяет комнаты на пересечения
     def intersects(self, other: RectangularRoom) -> bool:
         # other - другая комната, с которой чекаем пересечение
@@ -110,7 +116,8 @@ class RectangularRoom:
                 and self.y2 >= other.y1
         )
 
-def place_entities(room: RectangularRoom, dungeon: GameMap, floor_number: int,) -> None:
+
+def place_entities(room: RectangularRoom, dungeon: GameMap, floor_number: int, ) -> None:
     number_of_monsters = random.randint(
         0, get_max_value_for_floor(max_monsters_by_floor, floor_number)
     )
@@ -130,9 +137,11 @@ def place_entities(room: RectangularRoom, dungeon: GameMap, floor_number: int,) 
         y = random.randint(room.y1 + 1, room.y2 - 1)
 
         if not any(entity.x == x and entity.y == y for entity in dungeon.entities):
-            entity.spawn(dungeon, x, y)
+            entity.spawn(dungeon, x, y) \
+
+
 def tunnel_between(
-    start: Tuple[int, int], end: Tuple[int, int]
+        start: Tuple[int, int], end: Tuple[int, int]
 ) -> Iterator[Tuple[int, int]]:
     """Возращает туннель между двумя точками в форме L"""
     x1, y1 = start
@@ -163,18 +172,19 @@ def tunnel_between(
     for x, y in tcod.los.bresenham((corner_x, corner_y), (x2, y2)).tolist():
         yield x, y
 
+
 # yield - испольщуется для создания генераторов. Позволяют создавать
 # последовательности значений, которые могут быть получены по одному
 # элементу за раз. при вызове возращает обьект-итератор, который можно использовать
 # для получения значений полседовательности
 
 def generate_dungeon(
-    max_rooms: int,
-    room_min_size: int,
-    room_max_size: int,
-    map_width: int,
-    map_height: int,
-    engine: Engine,
+        max_rooms: int,
+        room_min_size: int,
+        room_max_size: int,
+        map_width: int,
+        map_height: int,
+        engine: Engine,
 ) -> GameMap:
     """Создание нового подземелья"""
     player = engine.player
@@ -220,6 +230,3 @@ def generate_dungeon(
         rooms.append(new_room)
 
     return dungeon
-
-
-

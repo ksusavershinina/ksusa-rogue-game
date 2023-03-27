@@ -25,7 +25,7 @@ def new_game() -> Engine:
 
     room_max_size = 10
     room_min_size = 6
-    max_rooms = 30
+    max_rooms = 20
 
     player = copy.deepcopy(entity_factories.player)
 
@@ -43,7 +43,7 @@ def new_game() -> Engine:
     engine.update_fov()
 
     engine.message_log.add_message(
-        "Hello and welcome, adventurer, to yet another dungeon!", color.welcome_text
+        "Hello and welcome, adventurer, to this dangerous dungeon!", color.welcome_text
     )
     return engine
 

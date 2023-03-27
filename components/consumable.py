@@ -44,6 +44,7 @@ class Consumable(BaseComponent):
         if isinstance(inventory, components.inventory.Inventory):
             inventory.items.remove(entity)
 
+
 class ConfusionConsumable(Consumable):
     """the component that causes the confusion effect"""
     def __init__(self, number_of_turns: int):
@@ -77,6 +78,8 @@ class ConfusionConsumable(Consumable):
             entity=target, previous_ai=target.ai, turns_remaining=self.number_of_turns,
         )
         self.consume()
+
+
 class HealingConsumable(Consumable):
     """инициализируется количеством хилки"""
     def __init__(self, amount: int):
@@ -94,6 +97,21 @@ class HealingConsumable(Consumable):
             self.consume()
         else:
             raise Impossible(f"Your health is already full.")
+
+class Money(Consumable):
+    def __init__(self, amount: int):
+        self.amount = amount
+
+    def activate(self, action: actions.ItemAction) -> None:
+        consumer = action.entity
+        money_got = consumer.fighter.take_money(self.amount)
+
+        if money_got > 0:
+            self.engine.message_log.add_message(
+                f"You got {self.parent.name} coin(s)",
+                color.coins
+            )
+            self.consume()
 
 class FireballDamageConsumable(Consumable):
     """атака по области"""
@@ -129,7 +147,10 @@ class FireballDamageConsumable(Consumable):
         if not targets_hit:
             raise Impossible("There are no targets in the radius.")
         self.consume()
+
+        
 class LightningDamageConsumable(Consumable):
+    """атака молнией"""
     def __init__(self, damage: int, maximum_range: int):
         self.damage = damage
         self.maximum_range = maximum_range
@@ -156,3 +177,5 @@ class LightningDamageConsumable(Consumable):
             self.consume()
         else:
             raise Impossible("No enemy is close enough to strike.")
+
+
