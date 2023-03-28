@@ -26,3 +26,6 @@ class Cash(BaseComponent):
         self.current_cash += coins
 
         self.engine.message_log.add_message(f"You gain {coins} coin(s)")
+
+    def lose_cash(self, coins: int):
+        self.current_cash -= coins

@@ -93,9 +93,3 @@ chain_mail = Item(
     name="Chain Mail",
     equippable=equippable.ChainMail()
 )
-coin = Item(
-    char="M",
-    color=(0, 0, 0),
-    name="Coin",
-    consumable=consumable.Money(amount=1),
-)

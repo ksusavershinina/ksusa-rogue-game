@@ -98,20 +98,6 @@ class HealingConsumable(Consumable):
         else:
             raise Impossible(f"Your health is already full.")
 
-class Money(Consumable):
-    def __init__(self, amount: int):
-        self.amount = amount
-
-    def activate(self, action: actions.ItemAction) -> None:
-        consumer = action.entity
-        money_got = consumer.fighter.take_money(self.amount)
-
-        if money_got > 0:
-            self.engine.message_log.add_message(
-                f"You got {self.parent.name} coin(s)",
-                color.coins
-            )
-            self.consume()
 
 class FireballDamageConsumable(Consumable):
     """атака по области"""

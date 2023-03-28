@@ -339,6 +339,9 @@ class CharacterScreenEventHandler(AskUserEventHandler):
             x=x + 1, y=y + 1, string=f"Level: {self.engine.player.level.current_level}"
         )
         console.print(
+            x=x + 1, y=y + 2, string=f"XP: {self.engine.player.level.current_xp}"
+        )
+        console.print(
             x=x + 1,
             y=y + 2,
             string=f"XP for next Level: {self.engine.player.level.experience_to_next_level}",
